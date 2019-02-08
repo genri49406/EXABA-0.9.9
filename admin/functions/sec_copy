@@ -1,0 +1,84 @@
+<?php
+mb_internal_encoding("UTF-8");
+ob_start("ob_gzhandler");
+include 'config.php';
+
+$show_form = 1;
+
+if (!isset($_COOKIE['post_owner'])) {
+	$length = 17;
+	$characters = str_shuffle('123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ');
+	$string = "";
+
+		for ($i = 0; $i < $length; $i++) {
+			$string .= $characters[mt_rand(0, 60)];
+		}
+
+	$post_unique_id = 'ver03'.TIME().$string;
+	setcookie('post_owner', $post_unique_id, TIME()+60*60*24*365, '/', $domain, false);
+}
+
+
+$file_name = preg_replace('#(.+?)([a-z0-9_-]+).php#i', '$2', $_SERVER['SCRIPT_NAME']);
+
+$result = mysql_query("SELECT * FROM board_config WHERE file_name = '$file_name'", $link);
+$row = mysql_fetch_assoc($result);
+$sec = $row['sec_id'];
+$page_title = $row['sec_title'];
+$page_description = $row['sec_description'];
+$limit = $row['sec_limit'];
+$num_rows = $row['sec_rows'];
+mysql_free_result($result);
+
+include 'functions/html.php';
+
+$result = mysql_query("SELECT * FROM board WHERE post_sec = '$sec' ORDER BY post_bump DESC LIMIT $page, $limit", $link);
+while ($row = mysql_fetch_assoc($result)) {
+$post_id = $row['post_id'];
+$post_title = $row['post_title'];
+$post_text = $row['post_text'];
+$post_time = $row['post_time'];
+$post_time = date('d '.$month_array[date('n',$post_time)].', Y H:i',$post_time);
+$img_dir = $row['img_dir'];
+$post_img = $row['post_img'];
+$img_ext = $row['img_ext'];
+$img_height = $row['img_height'];
+$img_width = $row['img_width'];
+$thumb_w = $row['thumb_w'];
+$thumb_h = $row['thumb_h'];
+$img_size = $row['img_size'];
+$post_num = $row['post_num'];
+
+$text_length = mb_strlen($post_text);
+	if ($text_length > 700) {
+		$post_text = mb_substr($post_text, 0, 700);
+		$post_text = $post_text.'&#8230; <a href="post.php?id='.$post_id.'#'.$post_num.'">Далее</a>&#8230;';
+	}
+
+	if (isset($_COOKIE[$post_id])) {
+		$hide_style = ' style="display: none;"';
+		$show_hide =' <span title="Показать" class="show_image"  onclick="show_hide(this)"></span>';
+	} else {
+		$hide_style = '';
+		$show_hide =' <span title="Скрыть" class="hide_image"  onclick="show_hide(this)"></span>';
+	}
+
+text_formating();
+
+echo '
+<div class="post" id="c'.$post_id.'">
+'.$post_title, $post_img, $video .'<p'.$hide_style.'>'.$post_text.'</p>
+<div class="info">Тред №'.$post_id.' <a href="post.php?id='.$post_id.'#'.$post_num.'">Ответов: '.$post_num.'</a> '.$post_time, $show_hide.'</div>
+</div>
+';
+}
+
+mysql_free_result($result);
+
+if($num_rows > $limit) {
+	pages($num_rows, $limit, '', '');
+}
+
+footer();
+mysql_close($link);
+?>
